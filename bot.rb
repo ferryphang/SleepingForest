@@ -1,7 +1,10 @@
 require 'facebook/messenger'
+require './config'
+require 'unirest'
+require 'byebug'
 
 include Facebook::Messenger
-
+book = pasal = nil
 Bot.on :message do |message|
   message.id          # => 'mid.1457764197618:41d102a3e1ae206a38'
   message.sender      # => { 'id' => '1008372609250235' }
@@ -9,13 +12,43 @@ Bot.on :message do |message|
   message.sent_at     # => 2016-04-22 21:30:36 +0200
   message.text        # => 'Hello, bot!'
   message.attachments # => [ { 'type' => 'image', 'payload' => { 'url' => 'https://www.example.com/1.jpg' } } ]
-  
-  Bot.deliver(
+
+  if message.text == "mazmur"
+    book = message.text
+  end
+
+  if book && pasal
+    response = Unirest.get "http://alkitab.gbippl.id/alkitab/tb/#{book}/#{pasal}"
+    response.body.each do |ayat|
+      Bot.deliver(
+        recipient: message.sender,
+        message: {
+          text: "#{ayat["verse"]}. #{ayat["content"]}"
+          }
+      )
+      sleep 2
+    end
+    book = pasal = nil
+  end
+  if book 
+
+    Bot.deliver(
+      recipient: message.sender,
+      message: {
+        text: "Oke #{book} pasal berapa yang ingin anda baca?"
+      }
+    ) 
+    pasal = message.text
+  end
+  if book.nil?
+    Bot.deliver(
     recipient: message.sender,
-    message: {
-      text: 'Hello, human!'
-    }
-  )
+      message: {
+        text: "Halo ketikkan kitab yang ingin anda ketahui?"
+      }
+    ) 
+  end
+
 end
 
 
